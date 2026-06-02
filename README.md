@@ -89,9 +89,12 @@ uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu
 ```
 <br>
 
-#### 4. 完成
+#### 4. 沒意外已經好了
 ```shell
-# 沒意外已經好了
+# 常用指令們
+python convert.py --colmap_executable colmap-x64-windows-cuda\COLMAP.bat -s C:\Users\.......
+python train.py -s C:\Users\.........
+./viewers/bin/SIBR_gaussianViewer_app -m output\.....
 ```
 <br>
 
