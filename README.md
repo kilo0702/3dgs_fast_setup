@@ -29,11 +29,7 @@ Abstract: *Radiance Field methods have recently revolutionized novel-view synthe
   </div>
 </section>
 
-
-
-
-
-
+<br>
 
 ## 行前準備
 
