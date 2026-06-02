@@ -36,7 +36,7 @@ Abstract: *Radiance Field methods have recently revolutionized novel-view synthe
 ### Cloning the Repository
 
 ```shell
-git clone git@github.com:graphdeco-inria/gaussian-splatting.git --recursive
+git clone https://github.com/kilo0702/3dgs_fast_setup.git --recursive
 ```
 
 ### Visual Studio Installer 確認
