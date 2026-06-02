@@ -53,6 +53,7 @@ uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu
 #### 3. 執行一鍵腳本
 腳本會自動修改所需變更之處
 ```shell
+# 此命令要用 PowerShell
 .\install_all_modules.ps1
 ```
 <br>
