@@ -78,6 +78,8 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 ```shell
 uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu132
 ```
+測試成功當下的版本紀錄 `torch==2.12.0+cu132` `torchvision==0.27.0+cu132`
+
 <br>
 
 #### 3. 執行一鍵腳本
