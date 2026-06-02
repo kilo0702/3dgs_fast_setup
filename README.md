@@ -31,98 +31,74 @@ Abstract: *Radiance Field methods have recently revolutionized novel-view synthe
 
 
 
-## Funding and Acknowledgments
 
-This research was funded by the ERC Advanced grant FUNGRAPH No 788065. The authors are grateful to Adobe for generous donations, the OPAL infrastructure from Université Côte d’Azur and for the HPC resources from GENCI–IDRIS (Grant 2022-AD011013409). The authors thank the anonymous reviewers for their valuable feedback, P. Hedman and A. Tewari for proofreading earlier drafts also T. Müller, A. Yu and S. Fridovich-Keil for helping with the comparisons.
 
-## NEW FEATURES !
 
-We have limited resources for maintaining and updating the code. However, we have added a few new features since the original release that are inspired by some of the excellent work many other researchers have been doing on 3DGS. We will be adding other features within the ability of our resources.
 
-**Update of October 2024**: We integrated [training speed acceleration](#training-speed-acceleration) and made it compatible with [depth regularization](#depth-regularization), [anti-aliasing](#anti-aliasing) and [exposure compensation](#exposure-compensation). We have enhanced the SIBR real time viewer by correcting bugs and adding features in the [Top View](#sibr-top-view) that allows visualization of input and user cameras.
+## 行前準備
 
-**Update of Spring 2024**:
-Orange Labs has kindly added [OpenXR support](#openxr-support) for VR viewing. 
+### Cloning the Repository
 
-## Step-by-step Tutorial
-
-Jonathan Stephens made a fantastic step-by-step tutorial for setting up Gaussian Splatting on your machine, along with instructions for creating usable datasets from videos. If the instructions below are too dry for you, go ahead and check it out [here](https://www.youtube.com/watch?v=UXtuigy_wYc).
-
-## Colab
-
-User [camenduru](https://github.com/camenduru) was kind enough to provide a Colab template that uses this repo's source (status: August 2023!) for quick and easy access to the method. Please check it out [here](https://github.com/camenduru/gaussian-splatting-colab).
-
-## Cloning the Repository
-
-The repository contains submodules, thus please check it out with 
 ```shell
-# SSH
 git clone git@github.com:graphdeco-inria/gaussian-splatting.git --recursive
 ```
-or
-```shell
-# HTTPS
-git clone https://github.com/graphdeco-inria/gaussian-splatting --recursive
-```
 
-## Overview
+### Visual Studio Installer 確認
+若未安裝，[**按此下載**](https://visualstudio.microsoft.com/zh-hant/downloads/)，本範例採用 `VS 2026`
+- 開啟你電腦上的 `Visual Studio Installer`Build cuda_12.9
+- 找到你的 Visual Studio XXXX BuildTools，點擊格子右側 `修改`
+- 在右邊`安裝詳細資料`->`使用C++的桌面開發`->`選擇性`
+- 勾選 `MSVC v143 - VS 2022 C++ x64/x86 XXX` (原本有勾就免做) 
+- 點擊右下角的 [修改] 進行安裝
 
-The codebase has 4 main components:
-- A PyTorch-based optimizer to produce a 3D Gaussian model from SfM inputs
-- A network viewer that allows to connect to and visualize the optimization process
-- An OpenGL-based real-time viewer to render trained models in real-time.
-- A script to help you turn your own images into optimization-ready SfM data sets
-
-The components have different requirements w.r.t. both hardware and software. They have been tested on Windows 10 and Ubuntu Linux 22.04. Instructions for setting up and running each of them are found in the sections below.
-
-
-
-
-## Optimizer
-
-The optimizer uses PyTorch and CUDA extensions in a Python environment to produce trained models. 
-
-### Hardware Requirements
-
-- CUDA-ready GPU with Compute Capability 7.0+
-- 24 GB VRAM (to train to paper evaluation quality)
-- Please see FAQ for smaller VRAM configurations
-
-### Software Requirements
-- Conda (recommended for easy setup)
-- C++ Compiler for PyTorch extensions (we used Visual Studio 2019 for Windows)
-- CUDA SDK 11 for PyTorch extensions, install *after* Visual Studio (we used 11.8, **known issues with 11.6**)
-- C++ Compiler and CUDA SDK must be compatible
-
-### Setup
-
-#### Local Setup
-
-Our default, provided install method is based on Conda package and environment management:
-```shell
-SET DISTUTILS_USE_SDK=1 # Windows only
-conda env create --file environment.yml
-conda activate gaussian_splatting
-```
-Please note that this process assumes that you have CUDA SDK **11** installed, not **12**. For modifications, see below.
-
-Tip: Downloading packages and creating a new environment with Conda can require a significant amount of disk space. By default, Conda will use the main system hard drive. You can avoid this by specifying a different package download location and an environment on a different drive:
+### CUDA Toolkit 確認
 
 ```shell
-conda config --add pkgs_dirs <Drive>/<pkg_path>
-conda env create --file environment.yml --prefix <Drive>/<env_path>/gaussian_splatting
-conda activate <Drive>/<env_path>/gaussian_splatting
+nvcc -V
+```
+確認是否出現 `Build cuda_XXX` 之類版本號
+
+若無，[**按此下載**](https://developer.nvidia.com/cuda-toolkit-archive)，本範例採用 `CUDA 13.2`
+
+<br>
+
+## 環境建置
+
+#### 1. 環境用 `UV venv`為例
+在3DGS目錄開啟終端機，Python版本指定 `3.10`
+```shell
+uv venv --python 3.10
+uv init
 ```
 
-#### Modifications
+(若電腦首次使用 `UV venv` 要執行以下安裝指令)
+```shell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+<br>
 
-If you can afford the disk space, we recommend using our environment files for setting up a training environment identical to ours. If you want to make modifications, please note that major version changes might affect the results of our method. However, our (limited) experiments suggest that the codebase works just fine inside a more up-to-date environment (Python 3.8, PyTorch 2.0.0, CUDA 12). Make sure to create an environment where PyTorch and its CUDA runtime version match and the installed CUDA SDK has no major version difference with PyTorch's CUDA version.
+#### 2. 安裝PyTorch
+官網 [**傳送門**](https://pytorch.org/get-started/locally/)<br>
+安裝適合你電腦的PyTorch版本，`CUDA 13.2`實測可行，以下為例
+```shell
+uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu132
+```
+<br>
 
-#### Known Issues
+#### 3. 執行一鍵腳本
+腳本會自動修改所需變更之處
+```shell
+.\install_all_modules.ps1
+```
+<br>
 
-Some users experience problems building the submodules on Windows (```cl.exe: File not found``` or similar). Please consider the workaround for this problem from the FAQ.
+#### 4. 完成
+```shell
+# 沒意外已經好了
+```
+<br>
 
-### Running
+## Running
 
 To run the optimizer, simply use
 
@@ -130,82 +106,6 @@ To run the optimizer, simply use
 python train.py -s <path to COLMAP or NeRF Synthetic dataset>
 ```
 
-<details>
-<summary><span style="font-weight: bold;">Command Line Arguments for train.py</span></summary>
-
-  #### --source_path / -s
-  Path to the source directory containing a COLMAP or Synthetic NeRF data set.
-  #### --model_path / -m 
-  Path where the trained model should be stored (```output/<random>``` by default).
-  #### --images / -i
-  Alternative subdirectory for COLMAP images (```images``` by default).
-  #### --eval
-  Add this flag to use a MipNeRF360-style training/test split for evaluation.
-  #### --resolution / -r
-  Specifies resolution of the loaded images before training. If provided ```1, 2, 4``` or ```8```, uses original, 1/2, 1/4 or 1/8 resolution, respectively. For all other values, rescales the width to the given number while maintaining image aspect. **If not set and input image width exceeds 1.6K pixels, inputs are automatically rescaled to this target.**
-  #### --data_device
-  Specifies where to put the source image data, ```cuda``` by default, recommended to use ```cpu``` if training on large/high-resolution dataset, will reduce VRAM consumption, but slightly slow down training. Thanks to [HrsPythonix](https://github.com/HrsPythonix).
-  #### --white_background / -w
-  Add this flag to use white background instead of black (default), e.g., for evaluation of NeRF Synthetic dataset.
-  #### --sh_degree
-  Order of spherical harmonics to be used (no larger than 3). ```3``` by default.
-  #### --convert_SHs_python
-  Flag to make pipeline compute forward and backward of SHs with PyTorch instead of ours.
-  #### --convert_cov3D_python
-  Flag to make pipeline compute forward and backward of the 3D covariance with PyTorch instead of ours.
-  #### --debug
-  Enables debug mode if you experience erros. If the rasterizer fails, a ```dump``` file is created that you may forward to us in an issue so we can take a look.
-  #### --debug_from
-  Debugging is **slow**. You may specify an iteration (starting from 0) after which the above debugging becomes active.
-  #### --iterations
-  Number of total iterations to train for, ```30_000``` by default.
-  #### --ip
-  IP to start GUI server on, ```127.0.0.1``` by default.
-  #### --port 
-  Port to use for GUI server, ```6009``` by default.
-  #### --test_iterations
-  Space-separated iterations at which the training script computes L1 and PSNR over test set, ```7000 30000``` by default.
-  #### --save_iterations
-  Space-separated iterations at which the training script saves the Gaussian model, ```7000 30000 <iterations>``` by default.
-  #### --checkpoint_iterations
-  Space-separated iterations at which to store a checkpoint for continuing later, saved in the model directory.
-  #### --start_checkpoint
-  Path to a saved checkpoint to continue training from.
-  #### --quiet 
-  Flag to omit any text written to standard out pipe. 
-  #### --feature_lr
-  Spherical harmonics features learning rate, ```0.0025``` by default.
-  #### --opacity_lr
-  Opacity learning rate, ```0.05``` by default.
-  #### --scaling_lr
-  Scaling learning rate, ```0.005``` by default.
-  #### --rotation_lr
-  Rotation learning rate, ```0.001``` by default.
-  #### --position_lr_max_steps
-  Number of steps (from 0) where position learning rate goes from ```initial``` to ```final```. ```30_000``` by default.
-  #### --position_lr_init
-  Initial 3D position learning rate, ```0.00016``` by default.
-  #### --position_lr_final
-  Final 3D position learning rate, ```0.0000016``` by default.
-  #### --position_lr_delay_mult
-  Position learning rate multiplier (cf. Plenoxels), ```0.01``` by default. 
-  #### --densify_from_iter
-  Iteration where densification starts, ```500``` by default. 
-  #### --densify_until_iter
-  Iteration where densification stops, ```15_000``` by default.
-  #### --densify_grad_threshold
-  Limit that decides if points should be densified based on 2D position gradient, ```0.0002``` by default.
-  #### --densification_interval
-  How frequently to densify, ```100``` (every 100 iterations) by default.
-  #### --opacity_reset_interval
-  How frequently to reset opacity, ```3_000``` by default. 
-  #### --lambda_dssim
-  Influence of SSIM on total loss from 0 to 1, ```0.2``` by default. 
-  #### --percent_dense
-  Percentage of scene extent (0--1) a point must exceed to be forcibly densified, ```0.01``` by default.
-
-</details>
-<br>
 
 Note that similar to MipNeRF360, we target images at resolutions in the 1-1.6K pixel range. For convenience, arbitrary-size inputs can be passed and will be automatically resized if their width exceeds 1600 pixels. We recommend to keep this behavior, but you may force training to use your higher-resolution images by setting ```-r 1```.
 
@@ -298,85 +198,8 @@ python full_eval.py -m <directory with evaluation images>/garden ... --skip_trai
 </details>
 <br>
 
-## Interactive Viewers
-We provide two interactive viewers for our method: remote and real-time. Our viewing solutions are based on the [SIBR](https://sibr.gitlabpages.inria.fr/) framework, developed by the GRAPHDECO group for several novel-view synthesis projects.
-
-### Hardware Requirements
-- OpenGL 4.5-ready GPU and drivers (or latest MESA software)
-- 4 GB VRAM recommended
-- CUDA-ready GPU with Compute Capability 7.0+ (only for Real-Time Viewer)
-
-### Software Requirements
-- Visual Studio or g++, **not Clang** (we used Visual Studio 2019 for Windows)
-- CUDA SDK 11, install *after* Visual Studio (we used 11.8)
-- CMake (recent version, we used 3.24)
-- 7zip (only on Windows)
-
-### Pre-built Windows Binaries
-We provide pre-built binaries for Windows [here](https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/binaries/viewers.zip). We recommend using them on Windows for an efficient setup, since the building of SIBR involves several external dependencies that must be downloaded and compiled on-the-fly.
-
-### Installation from Source
-If you cloned with submodules (e.g., using ```--recursive```), the source code for the viewers is found in ```SIBR_viewers```. The network viewer runs within the SIBR framework for Image-based Rendering applications.
-
-#### Windows
-CMake should take care of your dependencies.
-```shell
-cd SIBR_viewers
-cmake -Bbuild .
-cmake --build build --target install --config RelWithDebInfo
-```
-You may specify a different configuration, e.g. ```Debug``` if you need more control during development.
-
-#### Ubuntu 22.04
-You will need to install a few dependencies before running the project setup.
-```shell
-# Dependencies
-sudo apt install -y libglew-dev libassimp-dev libboost-all-dev libgtk-3-dev libopencv-dev libglfw3-dev libavdevice-dev libavcodec-dev libeigen3-dev libxxf86vm-dev libembree-dev
-# Project setup
-cd SIBR_viewers
-cmake -Bbuild . -DCMAKE_BUILD_TYPE=Release # add -G Ninja to build faster
-cmake --build build -j24 --target install
-``` 
-
-#### Ubuntu 20.04
-Backwards compatibility with Focal Fossa is not fully tested, but building SIBR with CMake should still work after invoking
-```shell
-git checkout fossa_compatibility
-```
-
-### Navigation in SIBR Viewers
-The SIBR interface provides several methods of navigating the scene. By default, you will be started with an FPS navigator, which you can control with ```W, A, S, D, Q, E``` for camera translation and ```I, K, J, L, U, O``` for rotation. Alternatively, you may want to use a Trackball-style navigator (select from the floating menu). You can also snap to a camera from the data set with the ```Snap to``` button or find the closest camera with ```Snap to closest```. The floating menues also allow you to change the navigation speed. You can use the ```Scaling Modifier``` to control the size of the displayed Gaussians, or show the initial point cloud.
-
-### Running the Network Viewer
 
 
-
-https://github.com/graphdeco-inria/gaussian-splatting/assets/40643808/90a2e4d3-cf2e-4633-b35f-bfe284e28ff7
-
-
-
-After extracting or installing the viewers, you may run the compiled ```SIBR_remoteGaussian_app[_config]``` app in ```<SIBR install dir>/bin```, e.g.: 
-```shell
-./<SIBR install dir>/bin/SIBR_remoteGaussian_app
-```
-The network viewer allows you to connect to a running training process on the same or a different machine. If you are training on the same machine and OS, no command line parameters should be required: the optimizer communicates the location of the training data to the network viewer. By default, optimizer and network viewer will try to establish a connection on **localhost** on port **6009**. You can change this behavior by providing matching ```--ip``` and ```--port``` parameters to both the optimizer and the network viewer. If for some reason the path used by the optimizer to find the training data is not reachable by the network viewer (e.g., due to them running on different (virtual) machines), you may specify an override location to the viewer by using ```-s <source path>```. 
-
-<details>
-<summary><span style="font-weight: bold;">Primary Command Line Arguments for Network Viewer</span></summary>
-
-  #### --path / -s
-  Argument to override model's path to source dataset.
-  #### --ip
-  IP to use for connection to a running training script.
-  #### --port
-  Port to use for connection to a running training script. 
-  #### --rendering-size 
-  Takes two space separated numbers to define the resolution at which network rendering occurs, ```1200``` width by default.
-  Note that to enforce an aspect that differs from the input images, you need ```--force-aspect-ratio``` too.
-  #### --load_images
-  Flag to load source dataset images to be displayed in the top view for each camera.
-</details>
-<br>
 
 ### Running the Real-Time Viewer
 
