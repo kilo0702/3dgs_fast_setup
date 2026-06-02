@@ -32,13 +32,6 @@ Abstract: *Radiance Field methods have recently revolutionized novel-view synthe
 <br>
 
 ## 行前準備
-
-### Cloning the Repository
-
-```shell
-git clone https://github.com/kilo0702/3dgs_fast_setup.git --recursive
-```
-
 ### Visual Studio Installer 確認
 若未安裝，[**按此下載**](https://visualstudio.microsoft.com/zh-hant/downloads/)，本範例採用 `VS 2026`
 - 開啟你電腦上的 `Visual Studio Installer`Build cuda_12.9
@@ -59,6 +52,12 @@ nvcc -V
 <br>
 
 ## 環境建置
+#### 0. Cloning the Repository
+```shell
+git clone https://github.com/kilo0702/3dgs_fast_setup.git --recursive
+cd 3dgs_fast_setup
+```
+<br>
 
 #### 1. 環境用 `UV venv`為例
 在3DGS目錄開啟終端機，Python版本指定 `3.10`
