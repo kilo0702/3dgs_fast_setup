@@ -89,7 +89,7 @@ uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu
 ```
 <br>
 
-#### 4. 沒意外已經好了
+#### 4. 到此沒意外已經好了
 ```shell
 # 常用指令們
 python convert.py --colmap_executable colmap-x64-windows-cuda\COLMAP.bat -s C:\Users\.......
