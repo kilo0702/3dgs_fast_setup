@@ -1,34 +1,70 @@
-# 3D Gaussian Splatting for Real-Time Radiance Field Rendering
-Bernhard Kerbl*, Georgios Kopanas*, Thomas Leimkühler, George Drettakis (* indicates equal contribution)<br>
-| [Webpage](https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/) | [Full Paper](https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/3d_gaussian_splatting_high.pdf) | [Video](https://youtu.be/T_kXY43VZnk) | [Other GRAPHDECO Publications](http://www-sop.inria.fr/reves/publis/gdindex.php) | [FUNGRAPH project page](https://fungraph.inria.fr) |<br>
-| [T&T+DB COLMAP (650MB)](https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/datasets/input/tandt_db.zip) | [Pre-trained Models (14 GB)](https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/datasets/pretrained/models.zip) | [Viewers for Windows (60MB)](https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/binaries/viewers.zip) | [Evaluation Images (7 GB)](https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/evaluation/images.zip) |<br>
-![Teaser image](assets/teaser.png)
+# 3DGS Fast-Setup Guide for CUDA13 & PyTorch2.12.0
+## 行前準備
+### Visual Studio Installer 確認
+若未安裝，[**按此下載**](https://visualstudio.microsoft.com/zh-hant/downloads/)，本範例採用 `VS 2026`
+- 開啟你電腦上的 `Visual Studio Installer`Build cuda_12.9
+- 找到你的 Visual Studio XXXX BuildTools，點擊格子右側 `修改`
+- 在右邊`安裝詳細資料`->`使用C++的桌面開發`->`選擇性`
+- 勾選 `MSVC v143 - VS 2022 C++ x64/x86 XXX` (原本有勾就免做) 
+- 點擊右下角的 [修改] 進行安裝
 
-This repository contains the official authors implementation associated with the paper "3D Gaussian Splatting for Real-Time Radiance Field Rendering", which can be found [here](https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/). We further provide the reference images used to create the error metrics reported in the paper, as well as recently created, pre-trained models. 
+### CUDA Toolkit 確認
 
-<a href="https://www.inria.fr/"><img height="100" src="assets/logo_inria.png"> </a>
-<a href="https://univ-cotedazur.eu/"><img height="100" src="assets/logo_uca.png"> </a>
-<a href="https://www.mpi-inf.mpg.de"><img height="100" src="assets/logo_mpi.png"> </a> 
-<a href="https://team.inria.fr/graphdeco/"> <img style="width:100%;" src="assets/logo_graphdeco.png"></a>
+```shell
+nvcc -V
+```
+確認是否出現 `Build cuda_XXX` 之類版本號
 
-Abstract: *Radiance Field methods have recently revolutionized novel-view synthesis of scenes captured with multiple photos or videos. However, achieving high visual quality still requires neural networks that are costly to train and render, while recent faster methods inevitably trade off speed for quality. For unbounded and complete scenes (rather than isolated objects) and 1080p resolution rendering, no current method can achieve real-time display rates. We introduce three key elements that allow us to achieve state-of-the-art visual quality while maintaining competitive training times and importantly allow high-quality real-time (≥ 30 fps) novel-view synthesis at 1080p resolution. First, starting from sparse points produced during camera calibration, we represent the scene with 3D Gaussians that preserve desirable properties of continuous volumetric radiance fields for scene optimization while avoiding unnecessary computation in empty space; Second, we perform interleaved optimization/density control of the 3D Gaussians, notably optimizing anisotropic covariance to achieve an accurate representation of the scene; Third, we develop a fast visibility-aware rendering algorithm that supports anisotropic splatting and both accelerates training and allows realtime rendering. We demonstrate state-of-the-art visual quality and real-time rendering on several established datasets.*
+若無，[**按此下載**](https://developer.nvidia.com/cuda-toolkit-archive)，本範例採用 `CUDA 13.2`
 
-<section class="section" id="BibTeX">
-  <div class="container is-max-desktop content">
-    <h2 class="title">BibTeX</h2>
-    <pre><code>@Article{kerbl3Dgaussians,
-      author       = {Kerbl, Bernhard and Kopanas, Georgios and Leimk{\"u}hler, Thomas and Drettakis, George},
-      title        = {3D Gaussian Splatting for Real-Time Radiance Field Rendering},
-      journal      = {ACM Transactions on Graphics},
-      number       = {4},
-      volume       = {42},
-      month        = {July},
-      year         = {2023},
-      url          = {https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/}
-}</code></pre>
-  </div>
-</section>
+<br>
 
+## 環境建置
+#### 0. Cloning the Repository
+```shell
+git clone https://github.com/kilo0702/3dgs_fast_setup.git --recursive
+cd 3dgs_fast_setup
+```
+<br>
+
+#### 1. 環境用 `UV venv`為例
+在3DGS目錄開啟終端機，Python版本指定 `3.10`
+```shell
+uv venv --python 3.10
+uv init
+```
+
+(若電腦首次使用 `UV venv` 要執行以下安裝指令)
+```shell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+<br>
+
+#### 2. 安裝PyTorch
+官網 [**傳送門**](https://pytorch.org/get-started/locally/)<br>
+安裝適合你電腦的PyTorch版本，`CUDA 13.2`實測可行，以下為例
+```shell
+uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu132
+```
+測試成功當下的版本紀錄 `torch==2.12.0+cu132` `torchvision==0.27.0+cu132`
+
+<br>
+
+#### 3. 執行一鍵腳本
+腳本會自動修改所需變更之處
+```shell
+.\install_all_modules.ps1
+```
+<br>
+
+#### 4. 到此沒意外已經好了
+```shell
+# 常用指令們
+python convert.py --colmap_executable colmap-x64-windows-cuda\COLMAP.bat -s C:\Users\.......
+python train.py -s C:\Users\.........
+./viewers/bin/SIBR_gaussianViewer_app -m output\.....
+```
+<br>
 <br>
 
 ## 行前準備
@@ -97,6 +133,39 @@ python train.py -s C:\Users\.........
 ./viewers/bin/SIBR_gaussianViewer_app -m output\.....
 ```
 <br>
+<br>
+
+# 3D Gaussian Splatting for Real-Time Radiance Field Rendering
+Bernhard Kerbl*, Georgios Kopanas*, Thomas Leimkühler, George Drettakis (* indicates equal contribution)<br>
+| [Webpage](https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/) | [Full Paper](https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/3d_gaussian_splatting_high.pdf) | [Video](https://youtu.be/T_kXY43VZnk) | [Other GRAPHDECO Publications](http://www-sop.inria.fr/reves/publis/gdindex.php) | [FUNGRAPH project page](https://fungraph.inria.fr) |<br>
+| [T&T+DB COLMAP (650MB)](https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/datasets/input/tandt_db.zip) | [Pre-trained Models (14 GB)](https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/datasets/pretrained/models.zip) | [Viewers for Windows (60MB)](https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/binaries/viewers.zip) | [Evaluation Images (7 GB)](https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/evaluation/images.zip) |<br>
+![Teaser image](assets/teaser.png)
+
+This repository contains the official authors implementation associated with the paper "3D Gaussian Splatting for Real-Time Radiance Field Rendering", which can be found [here](https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/). We further provide the reference images used to create the error metrics reported in the paper, as well as recently created, pre-trained models. 
+
+<a href="https://www.inria.fr/"><img height="100" src="assets/logo_inria.png"> </a>
+<a href="https://univ-cotedazur.eu/"><img height="100" src="assets/logo_uca.png"> </a>
+<a href="https://www.mpi-inf.mpg.de"><img height="100" src="assets/logo_mpi.png"> </a> 
+<a href="https://team.inria.fr/graphdeco/"> <img style="width:100%;" src="assets/logo_graphdeco.png"></a>
+
+Abstract: *Radiance Field methods have recently revolutionized novel-view synthesis of scenes captured with multiple photos or videos. However, achieving high visual quality still requires neural networks that are costly to train and render, while recent faster methods inevitably trade off speed for quality. For unbounded and complete scenes (rather than isolated objects) and 1080p resolution rendering, no current method can achieve real-time display rates. We introduce three key elements that allow us to achieve state-of-the-art visual quality while maintaining competitive training times and importantly allow high-quality real-time (≥ 30 fps) novel-view synthesis at 1080p resolution. First, starting from sparse points produced during camera calibration, we represent the scene with 3D Gaussians that preserve desirable properties of continuous volumetric radiance fields for scene optimization while avoiding unnecessary computation in empty space; Second, we perform interleaved optimization/density control of the 3D Gaussians, notably optimizing anisotropic covariance to achieve an accurate representation of the scene; Third, we develop a fast visibility-aware rendering algorithm that supports anisotropic splatting and both accelerates training and allows realtime rendering. We demonstrate state-of-the-art visual quality and real-time rendering on several established datasets.*
+
+<section class="section" id="BibTeX">
+  <div class="container is-max-desktop content">
+    <h2 class="title">BibTeX</h2>
+    <pre><code>@Article{kerbl3Dgaussians,
+      author       = {Kerbl, Bernhard and Kopanas, Georgios and Leimk{\"u}hler, Thomas and Drettakis, George},
+      title        = {3D Gaussian Splatting for Real-Time Radiance Field Rendering},
+      journal      = {ACM Transactions on Graphics},
+      number       = {4},
+      volume       = {42},
+      month        = {July},
+      year         = {2023},
+      url          = {https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/}
+}</code></pre>
+  </div>
+</section>
+
 
 ## Running
 
