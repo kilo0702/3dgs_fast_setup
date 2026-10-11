@@ -45,7 +45,7 @@ uv init
 腳本會自動修改所需變更之處，也會自動找適合版本的PyTorch安裝
 
 ```shell
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
+Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
 .\quick_setup_3dgs.ps1
 ```
 測試成功當下的版本紀錄 `torch==2.12.0+cu132` `torchvision==0.27.0+cu132`
