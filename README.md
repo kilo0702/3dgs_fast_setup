@@ -40,25 +40,17 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 ```
 <br>
 
-#### 2. 安裝PyTorch
-官網 [**傳送門**](https://pytorch.org/get-started/locally/)<br>
-安裝適合你電腦的PyTorch版本，`CUDA 13.2`實測可行，以下為例
+#### 2. 執行一鍵腳本
+腳本會自動修改所需變更之處，也會自動找適合版本的PyTorch安裝
 ```shell
-uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu132
+# 此命令要用 PowerShell
+.\quick_setup_3dgs.ps1
 ```
 測試成功當下的版本紀錄 `torch==2.12.0+cu132` `torchvision==0.27.0+cu132`
 
 <br>
 
-#### 3. 執行一鍵腳本
-腳本會自動修改所需變更之處
-```shell
-# 此命令要用 PowerShell
-.\quick_setup_3dgs.ps1
-```
-<br>
-
-#### 4. 到此沒意外已經好了
+#### 3. 到此沒意外已經好了
 ```shell
 # 常用指令們
 uv run convert.py --colmap_executable colmap-x64-windows-cuda\COLMAP.bat -s C:\Users\.......
