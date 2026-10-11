@@ -123,25 +123,149 @@ Ensure-Submodule "submodules\fused-ssim" "https://github.com/rahul-goel/fused-ss
 
 Write-Host "✅ 所有 Submodules 已全數就緒！"
 
-# 3. 檢查 PyTorch 與 CUDA 支援（編譯 C++/CUDA 擴展模組必備）
-Write-Host "`n[步驟 3/5] 檢查 PyTorch CUDA 支援..."
-$hasTorchCuda = $false
+# 3. 檢查系統 CUDA Toolkit 與 PyTorch 支援（自動新版優先）
+Write-Host "`n[步驟 3/5] 檢查 CUDA Toolkit 與 PyTorch 支援 (自動新版優先)..."
+
+# 偵測本機安裝的所有 CUDA Toolkit
+function Get-InstalledCudaToolkits {
+    $cudaBase = "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA"
+    $results = @()
+    if (Test-Path $cudaBase) {
+        $dirs = Get-ChildItem -Path $cudaBase -Directory
+        foreach ($d in $dirs) {
+            $nvccPath = Join-Path $d.FullName "bin\nvcc.exe"
+            if (Test-Path $nvccPath) {
+                $verString = $d.Name -replace '^v',''
+                try {
+                    $parsedVer = [version]$verString
+                    $results += [PSCustomObject]@{
+                        Path    = $d.FullName
+                        Version = $parsedVer
+                        String  = $verString
+                        Major   = $parsedVer.Major
+                        Minor   = $parsedVer.Minor
+                    }
+                } catch {}
+            }
+        }
+    }
+    return @($results | Sort-Object Version -Descending)
+}
+
+function Get-PyTorchCudaUrl {
+    param([int]$Major, [int]$Minor)
+    
+    # 根據 CUDA 版本回傳匹配的 PyTorch wheel 來源 (新版優先)
+    if ($Major -ge 13) {
+        return @{ Tag = "cu130"; Url = "https://download.pytorch.org/whl/cu130"; Display = "CUDA 13.0+" }
+    }
+    if ($Major -eq 12) {
+        if ($Minor -ge 8) {
+            return @{ Tag = "cu128"; Url = "https://download.pytorch.org/whl/cu128"; Display = "CUDA 12.8" }
+        } elseif ($Minor -ge 6) {
+            return @{ Tag = "cu126"; Url = "https://download.pytorch.org/whl/cu126"; Display = "CUDA 12.6" }
+        } elseif ($Minor -ge 4) {
+            return @{ Tag = "cu124"; Url = "https://download.pytorch.org/whl/cu124"; Display = "CUDA 12.4" }
+        } else {
+            return @{ Tag = "cu121"; Url = "https://download.pytorch.org/whl/cu121"; Display = "CUDA 12.1" }
+        }
+    }
+    if ($Major -eq 11) {
+        return @{ Tag = "cu118"; Url = "https://download.pytorch.org/whl/cu118"; Display = "CUDA 11.8" }
+    }
+    # 預設新版優先
+    return @{ Tag = "cu130"; Url = "https://download.pytorch.org/whl/cu130"; Display = "CUDA 13.0+" }
+}
+
+$cudaToolkits = Get-InstalledCudaToolkits
+$selectedCuda = $null
+
+if ($cudaToolkits.Count -gt 0) {
+    # 自動「新版優先」：選擇本機安裝的最高版本 CUDA
+    $selectedCuda = $cudaToolkits[0]
+    Write-Host "✅ 偵測到本機安裝之 CUDA Toolkit (自動選用最新版)："
+    foreach ($c in $cudaToolkits) {
+        if ($c.Path -eq $selectedCuda.Path) {
+            Write-Host "  -> [最新/已選取] $($c.String) ($($c.Path))" -ForegroundColor Cyan
+        } else {
+            Write-Host "  -> [較舊版本]   $($c.String) ($($c.Path))" -ForegroundColor Gray
+        }
+    }
+    
+    # 強制將當前環境變數設定為最新 CUDA Toolkit
+    $env:CUDA_PATH = $selectedCuda.Path
+    $env:CUDA_HOME = $selectedCuda.Path
+    $env:PATH = "$($selectedCuda.Path)\bin;$($selectedCuda.Path)\libnvvp;$env:PATH"
+    
+    $targetWheel = Get-PyTorchCudaUrl -Major $selectedCuda.Major -Minor $selectedCuda.Minor
+} else {
+    Write-Warning "⚠️ 未在預設路徑找到獨立安裝的 CUDA Toolkit，嘗試使用 PATH 中的 nvcc..."
+    $nvccVerStr = & nvcc --version 2>$null
+    if ($nvccVerStr -match "release (\d+)\.(\d+)") {
+        $nvccMajor = [int]$matches[1]
+        $nvccMinor = [int]$matches[2]
+        $targetWheel = Get-PyTorchCudaUrl -Major $nvccMajor -Minor $nvccMinor
+        Write-Host "✅ 從 PATH 偵測到 nvcc 版本: $nvccMajor.$nvccMinor (對齊 $($targetWheel.Display))"
+    } else {
+        $targetWheel = @{ Tag = "cu130"; Url = "https://download.pytorch.org/whl/cu130"; Display = "CUDA 13.0 (最新優先)" }
+    }
+}
+
+# 檢查目前環境中的 PyTorch 狀態與其 CUDA 版本
+$currentTorchCuda = $null
+$hasWorkingTorchCuda = $false
 try {
-    $cudaCheck = uv run python -c "import torch; print(torch.cuda.is_available())" 2>$null
-    if ($cudaCheck -match "True") {
-        $hasTorchCuda = $true
-        $gpuName = uv run python -c "import torch; print(torch.cuda.get_device_name(0))" 2>$null
-        Write-Host "✅ 偵測到支援 CUDA 的 PyTorch (GPU: $gpuName)"
+    $info = uv run python -c "import torch; print(f'{torch.__version__}|{torch.cuda.is_available()}|{torch.version.cuda}')" 2>$null
+    if ($info) {
+        $parts = $info.Trim().Split('|')
+        $torchVer = $parts[0]
+        $cudaAvailable = ($parts[1] -match "True")
+        $torchCudaVer = $parts[2]
+        
+        if ($cudaAvailable -and $torchCudaVer -and ($torchCudaVer -ne "None")) {
+            $hasWorkingTorchCuda = $true
+            $currentTorchCuda = $torchCudaVer
+        }
     }
 } catch {}
 
-if (-not $hasTorchCuda) {
-    Write-Host "⚠️  未偵測到 CUDA 版 PyTorch，正在自動下載安裝 (CUDA 13.0)..."
-    uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu130
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "PyTorch 安裝失敗，請檢查網路連線或 PyTorch 來源。"
+# 判斷是否需要重新安裝/安裝 PyTorch 以避免 "make sure cuda version mismatches" 衝突
+$needInstallTorch = $false
+
+if (-not $hasWorkingTorchCuda) {
+    Write-Host "⚠️ 環境中未偵測到支援 CUDA 的 PyTorch。"
+    $needInstallTorch = $true
+} elseif ($selectedCuda) {
+    # 檢查 Major 版本匹配度 (例如 PyTorch 是 12.x 但系統選用了 13.x，或反之)
+    $torchMajor = [int]($currentTorchCuda.Split('.')[0])
+    if ($torchMajor -ne $selectedCuda.Major) {
+        Write-Warning "⚠️ 偵測到現有 PyTorch CUDA ($currentTorchCuda) 與選定的 CUDA Toolkit ($($selectedCuda.String)) 版本不相符！"
+        Write-Host "   這會導致編譯時發生 'The detected CUDA version mismatches the version that was used to compile PyTorch' 錯誤。"
+        Write-Host "   遵循「新版優先」原則，正在自動將 PyTorch 切換至對齊 $($targetWheel.Display) 的官方版本..."
+        $needInstallTorch = $true
+    } else {
+        $gpuName = uv run python -c "import torch; print(torch.cuda.get_device_name(0))" 2>$null
+        Write-Host "✅ 現有 PyTorch CUDA ($currentTorchCuda) 與選定的 CUDA Toolkit ($($selectedCuda.String)) 相容 (GPU: $gpuName)"
     }
-    Write-Host "✅ PyTorch (CUDA 13.0) 安裝完成！"
+} else {
+    $gpuName = uv run python -c "import torch; print(torch.cuda.get_device_name(0))" 2>$null
+    Write-Host "✅ 偵測到支援 CUDA 的 PyTorch (版本: $currentTorchCuda, GPU: $gpuName)"
+}
+
+if ($needInstallTorch) {
+    Write-Host "正在安裝/對齊 PyTorch 與 Torchvision ($($targetWheel.Display) - $($targetWheel.Tag))..."
+    uv pip install torch torchvision --index-url $targetWheel.Url
+    if ($LASTEXITCODE -ne 0) {
+        # 若 cu130 失敗，備援嘗試 cu128
+        if ($targetWheel.Tag -eq "cu130") {
+            Write-Warning "cu130 下載失敗，切換為備援版本 cu128..."
+            uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+        }
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "PyTorch 安裝失敗，請檢查網路連線。"
+        }
+    }
+    Write-Host "✅ PyTorch 對齊安裝完成！"
 }
 
 # 檢查是否已成功編譯過 CUDA 模組 (避免重複耗時編譯)
@@ -228,6 +352,19 @@ if ($modulesAlreadyInstalled) {
 @echo off
 set DISTUTILS_USE_SDK=1
 set TORCH_DONT_CHECK_COMPILER_ABI=1
+"@
+
+    if ($selectedCuda) {
+        $cmdScript += @"
+
+set CUDA_PATH=$($selectedCuda.Path)
+set CUDA_HOME=$($selectedCuda.Path)
+set PATH=$($selectedCuda.Path)\bin;$($selectedCuda.Path)\libnvvp;%PATH%
+"@
+    }
+
+    $cmdScript += @"
+
 call "$vcvars" -vcvars_ver=$selectedVersion
 
 echo ========================================
