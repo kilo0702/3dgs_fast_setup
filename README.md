@@ -25,6 +25,11 @@ nvcc -V
 git clone https://github.com/kilo0702/3dgs_fast_setup.git --recursive
 cd 3dgs_fast_setup
 ```
+
+(若電腦首次使用 `UV venv` 要執行以下安裝指令)
+```shell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
 <br>
 
 #### 1. 環境用 `UV venv`為例
@@ -34,10 +39,6 @@ uv venv --python 3.14
 uv init
 ```
 
-(若電腦首次使用 `UV venv` 要執行以下安裝指令)
-```shell
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-```
 <br>
 
 #### 2. 執行一鍵腳本 `PowerShell 7 needed`
