@@ -2,7 +2,7 @@
 ## 行前準備
 ### Visual Studio Installer 確認
 若未安裝，[**按此下載**](https://visualstudio.microsoft.com/zh-hant/downloads/)，本範例採用 `VS 2026`
-- 開啟你電腦上的 `Visual Studio Installer`Build cuda_12.9
+- 開啟你電腦上的 `Visual Studio Installer`
 - 找到你的 Visual Studio XXXX BuildTools，點擊格子右側 `修改`
 - 在右邊`安裝詳細資料`->`使用C++的桌面開發`->`選擇性`
 - 勾選 `MSVC v143 - VS 2022 C++ x64/x86 XXX` (原本有勾就免做) 
@@ -28,9 +28,9 @@ cd 3dgs_fast_setup
 <br>
 
 #### 1. 環境用 `UV venv`為例
-在3DGS目錄開啟終端機，Python版本指定 `3.10`
+在3DGS目錄開啟終端機，Python版本指定 `3.14`
 ```shell
-uv venv --python 3.10
+uv venv --python 3.14
 uv init
 ```
 
@@ -54,7 +54,7 @@ uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu
 腳本會自動修改所需變更之處
 ```shell
 # 此命令要用 PowerShell
-.\install_all_modules.ps1
+.\quick_setup_3dgs.ps1
 ```
 <br>
 
