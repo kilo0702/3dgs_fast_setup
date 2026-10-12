@@ -290,34 +290,51 @@ if ($modulesAlreadyInstalled) {
         Write-Error "找不到 vswhere.exe，請確認是否已安裝 Visual Studio。"
     }
 
-    $vsPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
-    if (-not $vsPath) {
+    # 搜尋所有已安裝的 Visual Studio 實例 (可能同時安裝 VS 2022 與 VS 2026)
+    $allVsPaths = @(& $vswhere -all -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath)
+    if ($allVsPaths.Count -eq 0) {
         Write-Error "找不到包含 C++ 開發工具的 Visual Studio 安裝。請在 Visual Studio Installer 勾選「使用 C++ 的桌面開發」。"
     }
 
-    $vcvars = Join-Path $vsPath "VC\Auxiliary\Build\vcvars64.bat"
-    if (-not (Test-Path $vcvars)) {
-        Write-Error "找不到 vcvars64.bat: $vcvars"
+    $bestVsPath = $null
+    $bestVcvars = $null
+    $selectedVersion = $null
+
+    # 優先遍歷所有 VS 實例，尋找穩定版 (< 14.50) 的 MSVC
+    foreach ($vp in $allVsPaths) {
+        $vcvarsBat = Join-Path $vp "VC\Auxiliary\Build\vcvars64.bat"
+        $msvcDir = Join-Path $vp "VC\Tools\MSVC"
+        if ((Test-Path $vcvarsBat) -and (Test-Path $msvcDir)) {
+            $vers = @(Get-ChildItem -Path $msvcDir -Directory | Select-Object -ExpandProperty Name | Sort-Object -Descending)
+            $compatVer = $vers | Where-Object { [version]$_ -lt [version]"14.50" } | Select-Object -First 1
+            if ($compatVer) {
+                $bestVsPath = $vp
+                $bestVcvars = $vcvarsBat
+                $selectedVersion = $compatVer
+                Write-Host "✅ 在 $vp 找到穩定的 MSVC 版本: $selectedVersion"
+                break
+            }
+        }
     }
-    Write-Host "✅ 找到 Visual Studio: $vsPath"
-
-    $msvcPath = Join-Path $vsPath "VC\Tools\MSVC"
-    $versions = @(Get-ChildItem -Path $msvcPath -Directory | Select-Object -ExpandProperty Name | Sort-Object -Descending)
-
-    # 優先選擇小於 14.50 的版本 (避免 NVCC 在過新 MSVC 上發生 0xC0000005 崩潰)
-    $selectedVersion = $versions | Where-Object { [version]$_ -lt [version]"14.50" } | Select-Object -First 1
 
     if (-not $selectedVersion) {
-        if ($versions.Count -gt 0) {
-            $selectedVersion = $versions[0]
-        }
+        $bestVsPath = $allVsPaths[0]
+        $bestVcvars = Join-Path $bestVsPath "VC\Auxiliary\Build\vcvars64.bat"
+        $msvcDir = Join-Path $bestVsPath "VC\Tools\MSVC"
+        $vers = @(Get-ChildItem -Path $msvcDir -Directory | Select-Object -ExpandProperty Name | Sort-Object -Descending)
+        $selectedVersion = if ($vers.Count -gt 0) { $vers[0] } else { $null }
+
+        Write-Host "✅ 找到 Visual Studio: $bestVsPath"
         Write-Warning "⚠️  找到的 MSVC 版本為 $selectedVersion (>= 14.50)。"
-        Write-Warning "   注意：MSVC 14.5x (VS 2026 最新版) 目前會使 NVIDIA NVCC (cudafe++) 發生 0xC0000005 記憶體崩潰！"
-        Write-Warning "   解決方法：請開啟 Visual Studio Installer -> 修改 (Modify) -> 個別元件 (Individual Components)，"
-        Write-Warning "   搜尋並勾選安裝「MSVC v14.44 (17.14) C++ x64/x86 建置工具」或「MSVC v143」，安裝後即可正常編譯。"
-    } else {
-        Write-Host "✅ 自動選擇最穩定的 MSVC 版本: $selectedVersion"
+        Write-Warning "   注意：NVIDIA NVCC (cudafe++) 目前在 MSVC 14.5x (VS 2026) 上有已知崩潰問題 (0xC0000005)！"
+        Write-Host "   💡 推薦解決方案：" -ForegroundColor Yellow
+        Write-Host "   請開啟 Visual Studio Installer -> 修改 (Modify) -> 切換至「個別元件 (Individual Components)」" -ForegroundColor Yellow
+        Write-Host "   搜尋並勾選安裝以下任一相容工具組：" -ForegroundColor Yellow
+        Write-Host "   👉「MSVC v14.44 (17.14) C++ x64/x86 建置工具」或「MSVC v143 (VS 2022)」" -ForegroundColor Cyan
+        Write-Host "   安裝後重新執行本腳本即可自動辨識並完成編譯。`n" -ForegroundColor Yellow
     }
+
+    $vcvars = $bestVcvars
 
     # 5. 修補 setup.py 並編譯安裝 CUDA 擴展模組
     Write-Host "`n[步驟 5/5] 修補 setup.py 並編譯安裝 CUDA 模組..."
@@ -352,6 +369,8 @@ if ($modulesAlreadyInstalled) {
 @echo off
 set DISTUTILS_USE_SDK=1
 set TORCH_DONT_CHECK_COMPILER_ABI=1
+set VSLANG=1033
+set MAX_JOBS=4
 "@
 
     if ($selectedCuda) {
@@ -398,7 +417,13 @@ if %errorlevel% neq 0 exit /b %errorlevel%
     Remove-Item $tempBat -ErrorAction SilentlyContinue
 
     if ($buildStatus -ne 0) {
-        Write-Host "`n❌ 安裝過程發生錯誤，請檢查上方紅字錯誤訊息。" -ForegroundColor Red
+        Write-Host "`n❌ 安裝過程發生錯誤，請檢查上方錯誤訊息。" -ForegroundColor Red
+        if ([version]$selectedVersion -ge [version]"14.50") {
+            Write-Host "`n💡 偵測到您目前使用的 MSVC 是 $selectedVersion (>= 14.50)。" -ForegroundColor Yellow
+            Write-Host "此失敗通常是因 NVIDIA NVCC 與最新版 MSVC 14.5x 不相容所致 (即出現 ninja: subcommand failed / 0xC0000005)。" -ForegroundColor Yellow
+            Write-Host "請開啟 Visual Studio Installer，在安裝項目中點擊「修改」->「個別元件」，" -ForegroundColor Cyan
+            Write-Host "勾選安裝「MSVC v14.44」或「MSVC v143」工具組後再試。" -ForegroundColor Cyan
+        }
         exit $buildStatus
     }
 }
